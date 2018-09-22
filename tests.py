@@ -44,6 +44,103 @@ class TestMatchLines(unittesttools.ValidatorTestCase):
                     validator=Validator,
                     contents=c.contents,
                     expected=c.expected,
+                    verbose=-1,
+                )
+
+    def test_without_cursor(self):
+        """Validate without a <cursor> group."""
+
+        class Validator(base.Validator):
+            """Found FOO"""
+
+            invalid = re.compile(r"FOO")
+
+        class Case(NamedTuple):
+            contents: str
+            expected: Iterable[str]
+
+        for c in (
+            Case("", ()),
+            Case(" ", ()),
+            Case(
+                "FOO",
+                (
+                    """\
+                    Foo.cls:1:0: error: Found FOO
+                     FOO
+                     ^
+                    """,
+                ),
+            ),
+            Case(
+                "FOO FOO",
+                (
+                    """\
+                    Foo.cls:1:0: error: Found FOO
+                     FOO FOO
+                     ^
+                    """,
+                    """\
+                    Foo.cls:1:4: error: Found FOO
+                     FOO FOO
+                         ^
+                    """,
+                ),
+            ),
+        ):
+            with self.subTest(c):
+                self.assertMatchLines(
+                    validator=Validator,
+                    contents=c.contents,
+                    expected=c.expected,
+                )
+
+    def test_with_cursor(self):
+        """Validate with a <cursor> group."""
+
+        class Validator(base.Validator):
+            """Found FOO"""
+
+            invalid = re.compile(r"(?P<cursor>FOO)")
+
+        class Case(NamedTuple):
+            contents: str
+            expected: Iterable[str]
+
+        for c in (
+            Case("", ()),
+            Case(" ", ()),
+            Case(
+                "FOO",
+                (
+                    """\
+                    Foo.cls:1:0: error: Found FOO
+                     FOO
+                     ^~~
+                    """,
+                ),
+            ),
+            Case(
+                "FOO FOO",
+                (
+                    """\
+                    Foo.cls:1:0: error: Found FOO
+                     FOO FOO
+                     ^~~
+                    """,
+                    """\
+                    Foo.cls:1:4: error: Found FOO
+                     FOO FOO
+                         ^~~
+                    """,
+                ),
+            ),
+        ):
+            with self.subTest(c):
+                self.assertMatchLines(
+                    validator=Validator,
+                    contents=c.contents,
+                    expected=c.expected,
                 )
 
 

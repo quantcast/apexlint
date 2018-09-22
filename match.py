@@ -18,4 +18,5 @@ def lines(
                         path=path, line=lineno, match=error.match
                     ),
                     message=error.message,
+                    source=error.source,
                 )

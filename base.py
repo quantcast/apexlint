@@ -1,6 +1,7 @@
 import abc
 import os
 import pathlib
+import textwrap
 from typing import Iterable, Match, NamedTuple, Pattern
 
 
@@ -16,11 +17,25 @@ class Location(NamedTuple):
     path: pathlib.Path
 
     @property
+    def len(self) -> int:
+        try:
+            start, end = self.match.span("cursor")
+        except IndexError:
+            return 0
+        return max(end - start, 0)
+
+    @property
     def column(self) -> int:
         try:
             return self.match.start("cursor")
         except IndexError:
             return self.match.start()
+
+    @property
+    def arrow(self) -> str:
+        indent = " " * self.column
+        arrow = "^" + "~" * (self.len - 1)
+        return indent + arrow
 
     def __str__(self):
         filename = os.fspath(self.path)
@@ -30,9 +45,17 @@ class Location(NamedTuple):
 class Message(NamedTuple):
     location: Location
     message: str
+    source: str
 
-    def render(self, *, indent: int = 1) -> str:
-        return f"{self.location}: error: {self.message}"
+    def render(self, *, indent: int = 1, verbose: int = 0) -> str:
+        out = f"{self.location}: error: {self.message}"
+
+        if verbose >= 0:
+            out += "\n" + textwrap.indent(
+                f"{self.source}\n{self.location.arrow}", prefix=" " * indent
+            )
+
+        return out
 
     def __str__(self):
         return self.render()

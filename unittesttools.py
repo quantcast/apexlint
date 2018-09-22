@@ -16,10 +16,11 @@ class ValidatorTestCase(unittest.TestCase):
         contents: str,
         expected: Iterable[str],
         msg: str = None,
+        verbose: int = 0,
     ):
         self.assertEqual(
             [
-                str(e)
+                e.render(verbose=verbose)
                 for e in match.lines(
                     contents.splitlines(),
                     path=pathlib.Path("Foo.cls"),
