@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import logging
 import os
+import pathlib
 import re
 import sys
 import unittest
@@ -194,6 +195,87 @@ class TestMatchLines(unittesttools.ValidatorTestCase):
                     contents="FOO",
                     expected=c.expected,
                     verbose=c.verbose,
+                )
+
+    def test_filenames_default(self):
+        """Default `Validator.filename`` is respected."""
+
+        class Validator(base.Validator):
+            """Found FOO"""
+
+            invalid = re.compile(r"FOO")
+
+        class Case(NamedTuple):
+            filename: str
+            expected: bool
+
+        for c in (
+            Case("Foo.cls", ("Foo.cls:1:0: error: Found FOO",)),
+            Case("Foo.trigger", ("Foo.trigger:1:0: error: Found FOO",)),
+            Case("Foo", ()),
+        ):
+            with self.subTest(c):
+                self.assertMatchLines(
+                    validator=Validator,
+                    contents="FOO",
+                    expected=c.expected,
+                    path=pathlib.Path(c.filename),
+                    verbose=-1,
+                )
+
+    def test_filenames_none(self):
+        """Empty `Validator.filename`` is respected."""
+
+        class Validator(base.Validator):
+            """Found FOO"""
+
+            invalid = re.compile(r"FOO")
+            filenames = ()
+
+        class Case(NamedTuple):
+            filename: str
+            expected: bool
+
+        for c in (
+            Case("Foo.cls", ()),
+            Case("Foo.trigger", ()),
+            Case("Foo", ()),
+        ):
+            with self.subTest(c):
+                self.assertMatchLines(
+                    validator=Validator,
+                    contents="FOO",
+                    expected=c.expected,
+                    path=pathlib.Path(c.filename),
+                    verbose=-1,
+                )
+
+    def test_filenames_custom(self):
+        """Custom `Validator.filename`` is respected."""
+
+        class Validator(base.Validator):
+            """Found FOO"""
+
+            invalid = re.compile(r"FOO")
+            filenames = ("*Test*.cls",)
+
+        class Case(NamedTuple):
+            filename: str
+            expected: bool
+
+        for c in (
+            Case("Foo.cls", ()),
+            Case("Foo_Test.cls", ("Foo_Test.cls:1:0: error: Found FOO",)),
+            Case("TestFoo.cls", ("TestFoo.cls:1:0: error: Found FOO",)),
+            Case("Foo", ()),
+        ):
+            with self.subTest(c):
+                self.assertMatchLines(
+                    validator=Validator,
+                    contents="FOO",
+                    expected=c.expected,
+                    path=pathlib.Path(c.filename),
+                    verbose=-1,
                 )
 
 

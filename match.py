@@ -10,6 +10,10 @@ def lines(
     path: pathlib.Path,
     validators: Sequence[Type[base.Validator]],
 ) -> Iterator[base.Message]:
+    enabled = base.Validator.filter(validators, path=path)
+    if not enabled:
+        return
+
     for lineno, line in enumerate(lines, start=1):
         for v in validators:
             for error in v.errors(line):

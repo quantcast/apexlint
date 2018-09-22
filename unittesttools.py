@@ -16,15 +16,14 @@ class ValidatorTestCase(unittest.TestCase):
         contents: str,
         expected: Iterable[str],
         msg: str = None,
+        path: pathlib.Path = pathlib.Path("Foo.cls"),
         verbose: int = 0,
     ):
         self.assertEqual(
             [
                 e.render(verbose=verbose)
                 for e in match.lines(
-                    contents.splitlines(),
-                    path=pathlib.Path("Foo.cls"),
-                    validators=(validator,),
+                    contents.splitlines(), path=path, validators=(validator,)
                 )
             ],
             [textwrap.dedent(e).rstrip("\n") for e in expected],

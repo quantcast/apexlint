@@ -2,7 +2,16 @@ import abc
 import os
 import pathlib
 import textwrap
-from typing import Iterable, Match, NamedTuple, Optional, Pattern, Tuple
+from typing import (
+    Iterable,
+    Match,
+    NamedTuple,
+    Optional,
+    Pattern,
+    Sequence,
+    Tuple,
+    Type,
+)
 
 
 class Error(NamedTuple):
@@ -75,9 +84,23 @@ class Message(NamedTuple):
 class Validator(abc.ABC):
     """Define a validator to run against a source file:
     `invalid` is a regexp that matches errors in the file.
+    `filenames` is a sequence of wildcard patterns for files to match.
     """
 
     invalid: Pattern
+    filenames: Iterable[str] = ("*.cls", "*.trigger")
+
+    @classmethod
+    def enabled(cls, *, path: pathlib.Path):
+        return bool(cls.filenames) and any(
+            path.match(pattern) for pattern in cls.filenames
+        )
+
+    @staticmethod
+    def filter(
+        validators: Iterable[Type["Validator"]], *, path: pathlib.Path
+    ) -> Sequence[Type["Validator"]]:
+        return tuple(v for v in validators if v.enabled(path=path))
 
     @classmethod
     def errors(cls, line: str) -> Iterable[Error]:
