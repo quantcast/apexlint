@@ -87,10 +87,12 @@ class Validator(abc.ABC):
     """Define a validator to run against a source file:
     `invalid` is a regexp that matches errors in the file.
     `filenames` is a sequence of wildcard patterns for files to match.
+    `suppress` is a regexp that silences an error if it matches.
     """
 
     invalid: Pattern
     filenames: Iterable[str] = ("*.cls", "*.trigger")
+    suppress: Optional[Pattern] = None
 
     @classmethod
     def enabled(cls, *, path: pathlib.Path):
@@ -111,7 +113,10 @@ class Validator(abc.ABC):
         )
 
     @classmethod
-    def errors(cls, line: str) -> Iterable[Error]:
+    def errors(cls, line: str, *, suppress: bool) -> Iterable[Error]:
+        if suppress and cls.suppress is not None and cls.suppress.search(line):
+            return
+
         for m in cls.invalid.finditer(line):
             source = line.rstrip("\n")
             yield Error(

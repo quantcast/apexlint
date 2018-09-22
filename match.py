@@ -2,16 +2,20 @@ import contextlib
 import logging
 import os
 import pathlib
+import re
 from typing import Iterable, Iterator, Sequence, Type
 
-from . import base, pathtools
+from . import base, pathtools, retools
 
 log = logging.getLogger(__name__)
+
+NOQA = retools.comment(re.compile("noqa", flags=re.IGNORECASE))
 
 
 def files(
     paths: Iterable[pathlib.Path],
     *,
+    suppress: bool = True,
     validators: Sequence[Type[base.Validator]],
 ) -> Iterator[base.Message]:
     """Return a Message iterator, as returned by `validators` for `paths`."""
@@ -28,13 +32,16 @@ def files(
             if not pathtools.StdIn.typeof(path):
                 stack.enter_context(f)
 
-            yield from lines(f, path=path, validators=enabled)
+            yield from lines(
+                f, path=path, suppress=suppress, validators=enabled
+            )
 
 
 def lines(
     lines: Iterable[str],
     *,
     path: pathlib.Path,
+    suppress: bool = True,
     validators: Sequence[Type[base.Validator]],
 ) -> Iterator[base.Message]:
     """Return a Message iterator, as returned by `validators` for `lines`."""
@@ -44,8 +51,11 @@ def lines(
         return
 
     for lineno, line in enumerate(lines, start=1):
+        if suppress and NOQA.search(line):
+            continue
+
         for v in validators:
-            for error in v.errors(line):
+            for error in v.errors(line, suppress=suppress):
                 yield base.Message(
                     location=base.Location(
                         path=path, line=lineno, match=error.match
@@ -58,8 +68,9 @@ def lines(
 def render(
     paths: Iterable[pathlib.Path],
     *,
+    suppress: bool = True,
     validators: Sequence[Type[base.Validator]],
     verbose: int = 0,
 ) -> Iterator[str]:
-    for m in files(paths, validators=validators):
+    for m in files(paths, suppress=suppress, validators=validators):
         yield m.render(verbose=verbose)

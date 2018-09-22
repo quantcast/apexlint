@@ -7,13 +7,13 @@ import re
 import sys
 import tempfile
 import unittest
-from typing import Iterable, NamedTuple, Union
+from typing import Iterable, NamedTuple, Pattern, Union
 
 # Resolve local module
 sys.path.insert(
     0, os.path.join(os.path.dirname(__file__), os.path.pardir)
 )  # noqa
-from apexlint import base, pathtools, unittesttools  # isort:skip
+from apexlint import base, pathtools, retools, unittesttools  # isort:skip
 
 
 # Other tests #################################################################
@@ -364,6 +364,36 @@ class TestMatchLines(unittesttools.ValidatorTestCase):
                     verbose=-1,
                 )
 
+    def test_suppress(self):
+        """`Validator.suppress` is respected."""
+
+        class Validator(base.Validator):
+            """Found FOO"""
+
+            invalid = re.compile(r"FOO")
+            suppress = retools.comment("ok")
+
+        class Case(NamedTuple):
+            contents: str
+            expected: Iterable[str]
+
+        for c in (
+            Case("FOO", ("Foo.cls:1:0: error: Found FOO",)),
+            Case("FOO '// ok'", ("Foo.cls:1:0: error: Found FOO",)),
+            Case("FOO '/* ok */'", ("Foo.cls:1:0: error: Found FOO",)),
+            Case("FOO // ok", ()),
+            Case("FOO /* ok */", ()),
+            Case("FOO '' // ok", ()),
+            Case("FOO '' /* ok */", ()),
+        ):
+            with self.subTest(c):
+                self.assertMatchLines(
+                    validator=Validator,
+                    contents=c.contents,
+                    expected=c.expected,
+                    verbose=-1,
+                )
+
 
 class TestPathtools(unittesttools.PathLikeTestCase):
     def test_paths(self):
@@ -451,6 +481,114 @@ class TestPathtoolsStdIn(unittest.TestCase):
     def test_typeof(self):
         self.assertTrue(pathtools.StdIn.typeof(pathtools.stdin))
         self.assertFalse(pathtools.StdIn.typeof(pathlib.Path("")))
+
+
+class TestRetools(unittest.TestCase):
+    def test_escape(self):
+        class Case(NamedTuple):
+            pattern: Union[Pattern, str]
+            flags: int
+            string: str
+            expected: bool
+
+        for c in (
+            # Special characters
+            Case(r".", flags=None, string=r".", expected=True),
+            Case(r".", flags=None, string=r"x", expected=False),
+            # Case sensitivity
+            Case(r"a", flags=None, string=r"a", expected=True),
+            Case(r"a", flags=None, string=r"A", expected=False),
+            Case(r"a", flags=re.IGNORECASE, string=r"A", expected=True),
+            # Patterns don't need to be escaped
+            Case(re.compile(r"."), flags=None, string=r"x", expected=True),
+            # Override flags
+            Case(
+                re.compile(r"a", flags=re.IGNORECASE),
+                flags=None,
+                string=r"A",
+                expected=True,
+            ),
+            Case(
+                re.compile(r"a", flags=re.IGNORECASE),
+                flags=0,
+                string=r"A",
+                expected=False,
+            ),
+            Case(
+                re.compile(r"a"),
+                flags=re.IGNORECASE,
+                string=r"A",
+                expected=True,
+            ),
+        ):
+            with self.subTest(c):
+                assertExpected = (
+                    self.assertTrue if c.expected else self.assertFalse
+                )
+                assertExpected(
+                    retools.escape(c.pattern, flags=c.flags).search(c.string)
+                )
+
+    def test_comment(self):
+        class Case(NamedTuple):
+            pattern: Union[Pattern, str]
+            string: str
+            expected: bool
+
+        for c in (
+            # C-style comment
+            Case(r"ok", string=r"/* ok */", expected=True),
+            Case(r"ok", string=r"/* */ ok", expected=False),
+            Case(r"ok", string=r"/* /* */ ok", expected=False),
+            # C++-style comment
+            Case(r"ok", string=r"// ok", expected=True),
+            # Not in comment
+            Case(r"ok", string=r"ok", expected=False),
+            # Special characters
+            Case(r".", string=r"// .", expected=True),
+            Case(r".", string=r"// x", expected=False),
+            # Case sensitivity
+            Case(r"ok", string=r"// ok", expected=True),
+            Case(r"ok", string=r"// OK", expected=False),
+            # Patterns don't need to be escaped
+            Case(re.compile(r"."), string=r"// x", expected=True),
+            # Pattern flags apply
+            Case(re.compile(r"a"), string=r"// A", expected=False),
+            Case(
+                re.compile(r"a", flags=re.IGNORECASE),
+                string=r"// A",
+                expected=True,
+            ),
+        ):
+            with self.subTest(c):
+                assertExpected = (
+                    self.assertTrue if c.expected else self.assertFalse
+                )
+                assertExpected(retools.comment(c.pattern).search(c.string))
+
+    def test_not_string(self):
+        class Case(NamedTuple):
+            pattern: Union[Pattern, str]
+            string: str
+            expected: bool
+
+        for c in (
+            # Single-quoted string
+            Case(r"ok", string=r"'' ok", expected=True),
+            Case(r"ok", string=r"'ok'", expected=False),
+            Case(r"ok", string=r"'ok", expected=False),
+            # Backslash escaping
+            Case(r"ok", string=r"'\''ok", expected=True),
+            Case(r"ok", string=r"'\\'ok", expected=True),
+            Case(r"ok", string=r"'\\\'ok", expected=False),
+            # Double-quoted string aren't strings in Apex
+            Case(r"ok", string=r'"ok"', expected=True),
+        ):
+            with self.subTest(c):
+                assertExpected = (
+                    self.assertTrue if c.expected else self.assertFalse
+                )
+                assertExpected(retools.not_string(c.pattern).search(c.string))
 
 
 if __name__ == "__main__":

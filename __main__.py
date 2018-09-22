@@ -11,6 +11,7 @@ log = logging.getLogger(__name__)
 def main(config: argparse.Namespace, *, output: IO = sys.stdout):
     for line in match.render(
         pathtools.unique(pathtools.walk(pathtools.paths(config.files))),
+        suppress=config.suppress,
         validators=[],
         verbose=config.verbose,
     ):
@@ -34,6 +35,14 @@ def parse_args(args: Sequence[str]) -> argparse.Namespace:
 
     parser.add_argument(
         "--debug", action="count", default=0, help="debug output"
+    )
+
+    parser.add_argument(
+        "--no-suppress",
+        action="store_false",
+        default=True,
+        dest="suppress",
+        help='disable the effect of "# noqa"; so suppression is ignored',
     )
 
     class QuietAction(argparse.Action):
