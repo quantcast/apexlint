@@ -13,6 +13,8 @@ from typing import (
     Type,
 )
 
+from . import pathtools
+
 
 class Error(NamedTuple):
     match: Match
@@ -92,15 +94,21 @@ class Validator(abc.ABC):
 
     @classmethod
     def enabled(cls, *, path: pathlib.Path):
-        return bool(cls.filenames) and any(
-            path.match(pattern) for pattern in cls.filenames
+        return (
+            pathtools.StdIn.typeof(path)
+            or bool(cls.filenames)
+            and any(path.match(pattern) for pattern in cls.filenames)
         )
 
     @staticmethod
     def filter(
         validators: Iterable[Type["Validator"]], *, path: pathlib.Path
     ) -> Sequence[Type["Validator"]]:
-        return tuple(v for v in validators if v.enabled(path=path))
+        return tuple(
+            v
+            for v in validators
+            if pathtools.StdIn.typeof(path) or v.enabled(path=path)
+        )
 
     @classmethod
     def errors(cls, line: str) -> Iterable[Error]:
