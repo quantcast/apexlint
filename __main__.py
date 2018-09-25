@@ -4,6 +4,7 @@ import pathlib
 import sys
 from typing import IO, Iterable, Optional, Sequence, Tuple, Type
 
+from . import validators  # import validators to register them
 from . import PROGNAME, base, match, pathtools, terminfo
 
 log = logging.getLogger(__name__)
@@ -54,7 +55,12 @@ def main(
         output_count=sys.stderr if config.count else None,
         suppress=config.suppress,
         term=terminfo.TermInfo.get(color=config.color),
-        validators=[],
+        validators=tuple(
+            validators.library(
+                select=frozenset(config.select),
+                ignore=frozenset(config.ignore),
+            )
+        ),
         verbose=config.verbose,
     )
     if messages:
@@ -65,6 +71,8 @@ def main(
 
 
 def parse_args(args: Sequence[str]) -> argparse.Namespace:
+    validator_names = validators.names()
+
     parser = argparse.ArgumentParser(
         description="Validate Salesforce code for common errors", prog=PROGNAME
     )
@@ -110,6 +118,14 @@ def parse_args(args: Sequence[str]) -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "--ignore",
+        action="append",
+        choices=validator_names,
+        default=[],
+        metavar="VALIDATOR",
+        help="list of errors to ignore (default: none)",
+    )
+    parser.add_argument(
         "--no-suppress",
         action="store_false",
         default=True,
@@ -129,6 +145,14 @@ def parse_args(args: Sequence[str]) -> argparse.Namespace:
         help="less verbose messages; see --verbose",
     )
 
+    parser.add_argument(
+        "--select",
+        action="append",
+        choices=validator_names,
+        default=[],
+        metavar="VALIDATOR",
+        help="list of errors to enable (default: all)",
+    )
     parser.add_argument(
         "-v",
         "--verbose",
