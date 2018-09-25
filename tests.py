@@ -81,6 +81,69 @@ class TestValidators(unittesttools.ValidatorTestCase):
                     expected=c.expected,
                 )
 
+    def test_NoFutureInTest(self):
+        class Case(NamedTuple):
+            filename: str
+            contents: str
+            expected: Iterable[str]
+
+        for c in (
+            Case(
+                "FooTest.cls",
+                "@future",
+                (
+                    """\
+                    FooTest.cls:1:0: error: @future used in test class
+                     @future
+                     ^~~~~~~
+                    """,
+                ),
+            ),
+            Case(
+                "FooTest.cls",
+                "@Future",
+                (
+                    """\
+                    FooTest.cls:1:0: error: @future used in test class
+                     @Future
+                     ^~~~~~~
+                    """,
+                ),
+            ),
+            Case(
+                "TestUtils.cls",
+                "@Future",
+                (
+                    """\
+                    TestUtils.cls:1:0: error: @future used in test class
+                     @Future
+                     ^~~~~~~
+                    """,
+                ),
+            ),
+            Case(
+                "UnitTestFactory.cls",
+                "@Future",
+                (
+                    """\
+                    UnitTestFactory.cls:1:0: error: @future used in test class
+                     @Future
+                     ^~~~~~~
+                    """,
+                ),
+            ),
+            # Ignore non-test files
+            Case("Foo.cls", "@future", ()),
+            Case("FooTest.trigger", "@future", ()),
+        ):
+            with self.subTest(c):
+                self.assertMatchLines(
+                    validator=validators.NoFutureInTest,
+                    contents=c.contents,
+                    expected=c.expected,
+                    path=pathlib.Path(c.filename),
+                )
+
 
 # Other tests #################################################################
 
