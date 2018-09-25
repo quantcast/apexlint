@@ -1,28 +1,61 @@
 import argparse
 import logging
+import pathlib
 import sys
-from typing import IO, Sequence
+from typing import IO, Iterable, Optional, Sequence, Tuple, Type
 
-from . import PROGNAME, match, pathtools
+from . import PROGNAME, base, match, pathtools
 
 log = logging.getLogger(__name__)
 
 
-def main(config: argparse.Namespace, *, output: IO = sys.stdout):
+def lint(
+    paths: Iterable[pathlib.Path],
+    *,
+    output: Optional[IO] = sys.stdout,
+    output_count: Optional[IO] = None,
+    suppress: bool = True,
+    validators: Sequence[Type[base.Validator]],
+    verbose: int = 0,
+) -> Tuple[Iterable[str], Iterable[Exception]]:
+    messages = []
     errors = []
+
     for message in match.render(
-        pathtools.unique(pathtools.walk(pathtools.paths(config.files))),
-        suppress=config.suppress,
-        validators=[],
-        verbose=config.verbose,
+        paths, suppress=suppress, validators=validators, verbose=verbose
     ):
         if isinstance(message, Exception):
             errors.append(message)
             continue
 
-        print(message, file=output)
+        messages.append(message)
+        if output is not None:
+            print(message, file=output)
 
-    return 2 if errors else 0
+    if output_count is not None:
+        print(len(messages), file=output_count)
+
+    return messages, errors
+
+
+def main(
+    config: argparse.Namespace,
+    *,
+    output: IO = sys.stdout,
+    output_count: IO = sys.stderr,
+):
+    messages, errors = lint(
+        pathtools.unique(pathtools.walk(pathtools.paths(config.files))),
+        output_count=sys.stderr if config.count else None,
+        suppress=config.suppress,
+        validators=[],
+        verbose=config.verbose,
+    )
+    if messages:
+        return 1
+    if errors:
+        return 2
+    return 0
 
 
 def parse_args(args: Sequence[str]) -> argparse.Namespace:
@@ -36,6 +69,12 @@ def parse_args(args: Sequence[str]) -> argparse.Namespace:
         default=["-"],
         nargs="*",
         help="files to validate",
+    )
+
+    parser.add_argument(
+        "--count",
+        action="store_true",
+        help="print total number of errors to standard error",
     )
 
     parser.add_argument(

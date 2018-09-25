@@ -13,7 +13,13 @@ from typing import Iterable, NamedTuple, Pattern, Union
 sys.path.insert(
     0, os.path.join(os.path.dirname(__file__), os.path.pardir)
 )  # noqa
-from apexlint import base, pathtools, retools, unittesttools  # isort:skip
+from apexlint import (  # isort:skip
+    __main__,
+    base,
+    pathtools,
+    retools,
+    unittesttools,
+)
 
 
 # Other tests #################################################################
@@ -126,6 +132,41 @@ class TestMatchFiles(unittesttools.ValidatorTestCase):
                     paths=[pathlib.Path(c.path)],
                     expected=c.expected,
                     verbose=-1,
+                )
+
+    def test_count(self):
+        """Validate counting of results"""
+
+        class Validator(base.Validator):
+            """Found FOO"""
+
+            invalid = re.compile(r"FOO")
+
+        class Case(NamedTuple):
+            enabled: bool
+            contents: str
+            expected: int
+
+        for c in (
+            Case(True, "", "0"),
+            Case(True, "FOO", "1"),
+            Case(True, "FOO FOO", "2"),
+            Case(False, "FOO", ""),
+        ):
+            with self.subTest(c):
+                output_count = io.StringIO("\n")
+                __main__.lint(
+                    output=None,
+                    output_count=output_count if c.enabled else None,
+                    paths=[pathtools.StdIn(io.StringIO(c.contents))],
+                    validators=[Validator],
+                    verbose=-1,
+                )
+                # Last line should be the count
+                self.assertEqual(
+                    output_count.getvalue().splitlines()[-1],
+                    c.expected,
+                    msg=output_count.getvalue(),
                 )
 
 
