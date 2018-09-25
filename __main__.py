@@ -4,7 +4,7 @@ import pathlib
 import sys
 from typing import IO, Iterable, Optional, Sequence, Tuple, Type
 
-from . import PROGNAME, base, match, pathtools
+from . import PROGNAME, base, match, pathtools, terminfo
 
 log = logging.getLogger(__name__)
 
@@ -15,6 +15,7 @@ def lint(
     output: Optional[IO] = sys.stdout,
     output_count: Optional[IO] = None,
     suppress: bool = True,
+    term: Optional[Type[terminfo.TermInfo]] = None,
     validators: Sequence[Type[base.Validator]],
     verbose: int = 0,
 ) -> Tuple[Iterable[str], Iterable[Exception]]:
@@ -22,7 +23,11 @@ def lint(
     errors = []
 
     for message in match.render(
-        paths, suppress=suppress, validators=validators, verbose=verbose
+        paths,
+        suppress=suppress,
+        term=term,
+        validators=validators,
+        verbose=verbose,
     ):
         if isinstance(message, Exception):
             errors.append(message)
@@ -48,6 +53,7 @@ def main(
         pathtools.unique(pathtools.walk(pathtools.paths(config.files))),
         output_count=sys.stderr if config.count else None,
         suppress=config.suppress,
+        term=terminfo.TermInfo.get(color=config.color),
         validators=[],
         verbose=config.verbose,
     )
@@ -69,6 +75,28 @@ def parse_args(args: Sequence[str]) -> argparse.Namespace:
         default=["-"],
         nargs="*",
         help="files to validate",
+    )
+
+    class ColorAction(argparse.Action):
+        def __call__(self, parser, namespace, values, *args, **kwargs):
+            namespace.color = self.parse(values)
+
+        @staticmethod
+        def parse(values):
+            if values == "never":
+                return False
+            if values == "always":
+                return True
+            if values == "auto":
+                return sys.stdout.isatty()
+
+    parser.add_argument(
+        "--color",
+        action=ColorAction,
+        choices=("always", "auto", "never"),
+        default=ColorAction.parse("auto"),
+        metavar="WHEN",
+        help=("colorize the output; WHEN can be 'always', 'auto', or 'never'"),
     )
 
     parser.add_argument(

@@ -4,7 +4,7 @@ import textwrap
 import unittest
 from typing import Iterable, Optional, Type, Union
 
-from . import base, match
+from . import base, match, terminfo
 
 
 class PathLikeTestCase(unittest.TestCase):
@@ -60,12 +60,19 @@ class ValidatorTestCase(unittest.TestCase):
         paths: Iterable[pathlib.Path],
         expected: Iterable[str],
         msg: str = None,
+        term: Optional[Type[terminfo.TermInfo]] = None,
         verbose: int = 0,
     ):
         self.assertEqual(
-            [str(m) for m in match.render(
-                paths=paths, validators=(validator,), verbose=verbose
-            )],
+            [
+                str(m)
+                for m in match.render(
+                    paths=paths,
+                    term=term,
+                    validators=(validator,),
+                    verbose=verbose,
+                )
+            ],
             [textwrap.dedent(e).rstrip("\n") for e in expected],
             msg=msg,
         )
@@ -79,11 +86,12 @@ class ValidatorTestCase(unittest.TestCase):
         msg: str = None,
         path: pathlib.Path = pathlib.Path("Foo.cls"),
         suppress: bool = True,
+        term: Optional[Type[terminfo.TermInfo]] = None,
         verbose: int = 0,
     ):
         self.assertEqual(
             [
-                e.render(verbose=verbose)
+                e.render(term=term, verbose=verbose)
                 for e in match.lines(
                     contents.splitlines(),
                     path=path,

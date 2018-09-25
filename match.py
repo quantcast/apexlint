@@ -3,9 +3,9 @@ import logging
 import os
 import pathlib
 import re
-from typing import Iterable, Iterator, Union, Sequence, Type
+from typing import Iterable, Iterator, Optional, Sequence, Type, Union
 
-from . import PROGNAME, base, pathtools, retools
+from . import PROGNAME, base, pathtools, retools, terminfo
 
 log = logging.getLogger(__name__)
 
@@ -74,6 +74,7 @@ def render(
     paths: Iterable[pathlib.Path],
     *,
     suppress: bool = True,
+    term: Optional[Type[terminfo.TermInfo]] = None,
     validators: Sequence[Type[base.Validator]],
     verbose: int = 0,
 ) -> Iterator[Union[Exception, str]]:
@@ -81,4 +82,4 @@ def render(
         if isinstance(message, Exception):
             yield message
             continue
-        yield message.render(verbose=verbose)
+        yield message.render(term=term, verbose=verbose)

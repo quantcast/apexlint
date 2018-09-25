@@ -13,7 +13,7 @@ from typing import (
     Type,
 )
 
-from . import pathtools
+from . import pathtools, terminfo
 
 
 class Error(NamedTuple):
@@ -64,17 +64,38 @@ class Message(NamedTuple):
             return bits[0], bits[1]
         return bits[0], None
 
-    def render(self, *, indent: int = 1, verbose: int = 0) -> str:
+    def render(
+        self,
+        *,
+        indent: int = 1,
+        term: Optional[Type[terminfo.TermInfo]] = None,
+        verbose: int = 0,
+    ) -> str:
+        if term is None:
+            term = terminfo.TermInfo.get(color=False)
+
         summary, description = self.split_message()
 
-        out = f"{self.location}: error: {summary}"
+        out = (
+            f"{term.BOLD}{self.location}: {term.BOLD_RED}error:{term.RESET} "
+            f"{summary}"
+        )
 
         if verbose > 0 and description:
-            out += "\n" + textwrap.indent(description, prefix=" " * indent * 2)
+            out += (
+                "\n"
+                + term.GRAY
+                + textwrap.indent(description, prefix=" " * indent * 2)
+                + term.RESET
+            )
 
         if verbose >= 0:
             out += "\n" + textwrap.indent(
-                f"{self.source}\n{self.location.arrow}", prefix=" " * indent
+                (
+                    f"{self.source}\n"
+                    f"{term.RED}{self.location.arrow}{term.RESET}"
+                ),
+                prefix=" " * indent,
             )
 
         return out

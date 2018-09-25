@@ -18,6 +18,7 @@ from apexlint import (  # isort:skip
     base,
     pathtools,
     retools,
+    terminfo,
     unittesttools,
 )
 
@@ -352,6 +353,53 @@ class TestMatchLines(unittesttools.ValidatorTestCase):
                     verbose=c.verbose,
                 )
 
+    def test_terminfo(self):
+        """Validate that terminfo controls color."""
+
+        class Validator(base.Validator):
+            """Found FOO
+            Instead of FOO, use BAR.
+            """
+
+            invalid = re.compile(r"(?P<cursor>FOO)")
+
+        class Case(NamedTuple):
+            term: terminfo.TermInfo
+            expected: Iterable[str]
+
+        for c in (
+            Case(
+                terminfo.DumbTerm,
+                (
+                    """\
+                    Foo.cls:1:0: error: Found FOO
+                      Instead of FOO, use BAR.
+                     FOO
+                     ^~~
+                    """,
+                ),
+            ),
+            Case(
+                terminfo.AnsiTerm,
+                (
+                    """\
+                    \033[1mFoo.cls:1:0: \033[1;31merror:\033[0m Found FOO
+                    \033[0;33m  Instead of FOO, use BAR.\033[0m
+                     FOO
+                     \033[0;31m^~~\033[0m
+                    """,
+                ),
+            ),
+        ):
+            with self.subTest(c):
+                self.assertMatchLines(
+                    validator=Validator,
+                    contents="FOO",
+                    expected=c.expected,
+                    term=c.term,
+                    verbose=1,
+                )
+
     def test_filenames_default(self):
         """Default `Validator.filename`` is respected."""
 
@@ -658,6 +706,28 @@ class TestRetools(unittest.TestCase):
                     self.assertTrue if c.expected else self.assertFalse
                 )
                 assertExpected(retools.not_string(c.pattern).search(c.string))
+
+
+class TestTermInfo(unittest.TestCase):
+    @staticmethod
+    def fields() -> Iterable[str]:
+        return terminfo.TermInfo.__annotations__.keys()
+
+    def test_get(self):
+        self.assertEqual(terminfo.TermInfo.get(color=False), terminfo.DumbTerm)
+        self.assertEqual(terminfo.TermInfo.get(color=True), terminfo.AnsiTerm)
+
+    def test_dumb_term(self):
+        """Ensure DumbTerm only contains blank color codes."""
+        for field in self.fields():
+            with self.subTest(field):
+                self.assertEqual(getattr(terminfo.DumbTerm, field), "")
+
+    def test_ansi_term(self):
+        """Ensure AnsiTerm has defined all color codes."""
+        for field in self.fields():
+            with self.subTest(field):
+                self.assertNotEqual(getattr(terminfo.AnsiTerm, field), "")
 
 
 if __name__ == "__main__":
