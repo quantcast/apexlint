@@ -3,9 +3,9 @@ import logging
 import os
 import pathlib
 import re
-from typing import Iterable, Iterator, Sequence, Type
+from typing import Iterable, Iterator, Union, Sequence, Type
 
-from . import base, pathtools, retools
+from . import PROGNAME, base, pathtools, retools
 
 log = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ def files(
     *,
     suppress: bool = True,
     validators: Sequence[Type[base.Validator]],
-) -> Iterator[base.Message]:
+) -> Iterator[Union[Exception, base.Message]]:
     """Return a Message iterator, as returned by `validators` for `paths`."""
     for path in paths:
         filename = os.fspath(path)
@@ -28,9 +28,14 @@ def files(
             continue
 
         with contextlib.ExitStack() as stack:
-            f = path.open(mode="r")
-            if not pathtools.StdIn.typeof(path):
-                stack.enter_context(f)
+            try:
+                f = path.open(mode="r")
+                if not pathtools.StdIn.typeof(path):
+                    stack.enter_context(f)
+            except IOError as e:
+                log.error(f"{PROGNAME}: {e}")
+                yield e
+                continue
 
             yield from lines(
                 f, path=path, suppress=suppress, validators=enabled
@@ -71,6 +76,9 @@ def render(
     suppress: bool = True,
     validators: Sequence[Type[base.Validator]],
     verbose: int = 0,
-) -> Iterator[str]:
-    for m in files(paths, suppress=suppress, validators=validators):
-        yield m.render(verbose=verbose)
+) -> Iterator[Union[Exception, str]]:
+    for message in files(paths, suppress=suppress, validators=validators):
+        if isinstance(message, Exception):
+            yield message
+            continue
+        yield message.render(verbose=verbose)

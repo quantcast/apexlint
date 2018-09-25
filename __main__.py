@@ -9,15 +9,20 @@ log = logging.getLogger(__name__)
 
 
 def main(config: argparse.Namespace, *, output: IO = sys.stdout):
-    for line in match.render(
+    errors = []
+    for message in match.render(
         pathtools.unique(pathtools.walk(pathtools.paths(config.files))),
         suppress=config.suppress,
         validators=[],
         verbose=config.verbose,
     ):
-        print(line, file=output)
+        if isinstance(message, Exception):
+            errors.append(message)
+            continue
 
-    return 0
+        print(message, file=output)
+
+    return 2 if errors else 0
 
 
 def parse_args(args: Sequence[str]) -> argparse.Namespace:

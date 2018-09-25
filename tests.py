@@ -100,6 +100,34 @@ class TestMatchFiles(unittesttools.ValidatorTestCase):
                             verbose=-1,
                         )
 
+    def test_missing(self):
+        """Validate that missing files are handled correctly."""
+
+        class Validator(base.Validator):
+            """Found FOO"""
+
+            invalid = re.compile(r"FOO")
+
+        class Case(NamedTuple):
+            path: str
+            expected: Iterable[str]
+
+        for c in (
+            Case(
+                path="Missing.cls",
+                expected=(
+                    "[Errno 2] No such file or directory: 'Missing.cls'",
+                ),
+            ),
+        ):
+            with self.subTest(c):
+                self.assertMatchFiles(
+                    validator=Validator,
+                    paths=[pathlib.Path(c.path)],
+                    expected=c.expected,
+                    verbose=-1,
+                )
+
 
 class TestMatchLines(unittesttools.ValidatorTestCase):
     def test_no_context(self):

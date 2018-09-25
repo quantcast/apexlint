@@ -63,11 +63,9 @@ class ValidatorTestCase(unittest.TestCase):
         verbose: int = 0,
     ):
         self.assertEqual(
-            list(
-                match.render(
-                    paths=paths, validators=(validator,), verbose=verbose
-                )
-            ),
+            [str(m) for m in match.render(
+                paths=paths, validators=(validator,), verbose=verbose
+            )],
             [textwrap.dedent(e).rstrip("\n") for e in expected],
             msg=msg,
         )
