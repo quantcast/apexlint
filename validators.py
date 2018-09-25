@@ -79,6 +79,21 @@ class NoSeeAllData(base.Validator):
     )
 
 
+class NoTestMethod(base.Validator):
+    """testMethod used instead of @isTest"""
+
+    invalid = re.compile(
+        r"""
+        \b
+        (?P<cursor>
+            testMethod
+        )
+        \b
+        """,
+        flags=(re.IGNORECASE | re.VERBOSE),
+    )
+
+
 def library(
     *,
     select: AbstractSet[str] = frozenset(),

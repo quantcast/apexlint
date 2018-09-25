@@ -213,6 +213,43 @@ class TestValidators(unittesttools.ValidatorTestCase):
                     expected=c.expected,
                 )
 
+    def test_NoTestMethod(self):
+        class Case(NamedTuple):
+            contents: str
+            expected: Iterable[str]
+
+        for c in (
+            Case("@isTest public static void test() {}", ()),
+            Case("@isTest public static void testMethodCall() {}", ()),
+            Case("@isTest public static void testTestMethod() {}", ()),
+            Case(
+                "public static testMethod void test() {}",
+                (
+                    """\
+                    Foo.cls:1:14: error: testMethod used instead of @isTest
+                     public static testMethod void test() {}
+                                   ^~~~~~~~~~
+                    """,
+                ),
+            ),
+            Case(
+                "public static testmethod void test() {}",
+                (
+                    """\
+                    Foo.cls:1:14: error: testMethod used instead of @isTest
+                     public static testmethod void test() {}
+                                   ^~~~~~~~~~
+                    """,
+                ),
+            ),
+        ):
+            with self.subTest(c):
+                self.assertMatchLines(
+                    validator=validators.NoTestMethod,
+                    contents=c.contents,
+                    expected=c.expected,
+                )
+
 
 # Other tests #################################################################
 
