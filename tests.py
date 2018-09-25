@@ -143,6 +143,59 @@ class TestMatchLines(unittesttools.ValidatorTestCase):
                     expected=c.expected,
                 )
 
+    def test_verbose(self):
+        """Validate verbose settings."""
+
+        class Validator(base.Validator):
+            """Found FOO
+            Instead of FOO, use BAR.
+            """
+
+            invalid = re.compile(r"(?P<cursor>FOO)")
+
+        class Case(NamedTuple):
+            verbose: int
+            expected: Iterable[str]
+
+        for c in (
+            Case(
+                -1,
+                (
+                    """\
+                    Foo.cls:1:0: error: Found FOO
+                    """,
+                ),
+            ),
+            Case(
+                0,
+                (
+                    """\
+                    Foo.cls:1:0: error: Found FOO
+                     FOO
+                     ^~~
+                    """,
+                ),
+            ),
+            Case(
+                1,
+                (
+                    """\
+                    Foo.cls:1:0: error: Found FOO
+                      Instead of FOO, use BAR.
+                     FOO
+                     ^~~
+                    """,
+                ),
+            ),
+        ):
+            with self.subTest(c):
+                self.assertMatchLines(
+                    validator=Validator,
+                    contents="FOO",
+                    expected=c.expected,
+                    verbose=c.verbose,
+                )
+
 
 if __name__ == "__main__":
     logging.disable(logging.CRITICAL)  # Tests shouldn't spew logs

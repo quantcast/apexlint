@@ -2,7 +2,7 @@ import abc
 import os
 import pathlib
 import textwrap
-from typing import Iterable, Match, NamedTuple, Pattern
+from typing import Iterable, Match, NamedTuple, Optional, Pattern, Tuple
 
 
 class Error(NamedTuple):
@@ -47,8 +47,19 @@ class Message(NamedTuple):
     message: str
     source: str
 
+    def split_message(self) -> Tuple[str, Optional[str]]:
+        bits = self.message.split("\n", 1)
+        if len(bits) > 1:
+            return bits[0], bits[1]
+        return bits[0], None
+
     def render(self, *, indent: int = 1, verbose: int = 0) -> str:
-        out = f"{self.location}: error: {self.message}"
+        summary, description = self.split_message()
+
+        out = f"{self.location}: error: {summary}"
+
+        if verbose > 0 and description:
+            out += "\n" + textwrap.indent(description, prefix=" " * indent * 2)
 
         if verbose >= 0:
             out += "\n" + textwrap.indent(
@@ -83,4 +94,10 @@ class Validator(abc.ABC):
         if not cls.__doc__:
             return ""
 
-        return cls.__doc__.format(match=match, source=source).strip()
+        # Dedent the description
+        bits = cls.__doc__.split("\n", 1)
+        msg = bits[0]
+        if len(bits) > 1:
+            msg += "\n" + textwrap.dedent(bits[1])
+
+        return msg.format(match=match, source=source).strip()
