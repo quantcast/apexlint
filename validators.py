@@ -1,7 +1,36 @@
 import operator
+import re
 from typing import AbstractSet, Iterable, Type
 
 from . import base, retools
+
+
+class NoComplexMapKeys(base.Validator):
+    """Map key is SObject or Object
+    See http://go.corp.qc/salesforce-maps
+    """
+
+    invalid = retools.not_string(
+        r"""
+        \b
+        new\s+Map\s*<\s*     # "new Map<"
+        (?!                  # Exclude these valid base types
+            (
+                (System\.)?  # Base types are in System namespace
+                (Id|String|Integer|Long|Decimal|Date|DateTime|Type)
+            |
+                (Schema\.)?  # SObject schema namespace
+                (SObjectField|SObjectType)
+            )
+        )
+        (?P<cursor>          # Capture key name
+            .+?
+        )
+        \s*\,                # Type ends with comma
+        """,
+        flags=(re.IGNORECASE | re.VERBOSE),
+    )
+    suppress = retools.comment("http://go.corp.qc/salesforce-maps")
 
 
 def library(

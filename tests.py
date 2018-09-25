@@ -20,7 +20,66 @@ from apexlint import (  # isort:skip
     retools,
     terminfo,
     unittesttools,
+    validators,
 )
+
+
+# Validator tests #############################################################
+
+
+class TestValidators(unittesttools.ValidatorTestCase):
+    """`Validator` classes in `apexlint.validators`."""
+
+    def test_NoComplexMapKeys(self):
+        class Case(NamedTuple):
+            contents: str
+            expected: Iterable[str]
+
+        for c in (
+            # Base types are OK
+            Case("new Map<Date, SObject>{}", ()),
+            Case("new Map<DateTime, SObject>{}", ()),
+            Case("new Map<Decimal, SObject>{}", ()),
+            Case("new Map<Id, SObject>{}", ()),
+            Case("new Map<Integer, SObject>{}", ()),
+            Case("new Map<Long, SObject>{}", ()),
+            Case("new Map<SObjectField, SObject>{}", ()),
+            Case("new Map<SObjectType, SObject>{}", ()),
+            Case("new Map<Schema.SObjectField, SObject>{}", ()),
+            Case("new Map<Schema.SObjectType, SObject>{}", ()),
+            Case("new Map<String, SObject>{}", ()),
+            Case("new Map<System.Date, SObject>{}", ()),
+            Case("new Map<System.DateTime, SObject>{}", ()),
+            Case("new Map<System.Decimal, SObject>{}", ()),
+            Case("new Map<System.Id, SObject>{}", ()),
+            Case("new Map<System.Integer, SObject>{}", ()),
+            Case("new Map<System.Long, SObject>{}", ()),
+            Case("new Map<System.String, SObject>{}", ()),
+            Case("new Map<System.Type, SObject>{}", ()),
+            Case("new Map<Type, SObject>{}", ()),
+            # Case should not matter
+            Case("new map<id, sobject>{}", ()),
+            Case("NEW MAP<ID, SOBJECT>{}", ()),
+            # All other map keys fail
+            Case(
+                "new Map<SObject, SObject>{}",
+                (
+                    """\
+                    Foo.cls:1:8: error: Map key is SObject or Object
+                     new Map<SObject, SObject>{}
+                             ^~~~~~~
+                    """,
+                ),
+            ),
+            # Suppression
+            Case("new Map<A, B>{} // http://go.corp.qc/salesforce-maps", ()),
+        ):
+            with self.subTest(c):
+                self.assertMatchLines(
+                    validator=validators.NoComplexMapKeys,
+                    contents=c.contents,
+                    expected=c.expected,
+                )
 
 
 # Other tests #################################################################
