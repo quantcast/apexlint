@@ -71,6 +71,17 @@ class TestValidators(unittesttools.ValidatorTestCase):
                     """,
                 ),
             ),
+            # Whitespace
+            Case(
+                " new Map < SObject , SObject > { }",
+                (
+                    """\
+                    Foo.cls:1:11: error: Map key is SObject or Object
+                      new Map < SObject , SObject > { }
+                                ^~~~~~~
+                    """,
+                ),
+            ),
             # Suppression
             Case("new Map<A, B>{} // http://go.corp.qc/salesforce-maps", ()),
         ):
@@ -129,6 +140,18 @@ class TestValidators(unittesttools.ValidatorTestCase):
                     UnitTestFactory.cls:1:0: error: @future used in test class
                      @Future
                      ^~~~~~~
+                    """,
+                ),
+            ),
+            # Whitespace
+            Case(
+                "FooTest.cls",
+                " @ future",
+                (
+                    """\
+                    FooTest.cls:1:1: error: @future used in test class
+                      @ future
+                      ^~~~~~~~
                     """,
                 ),
             ),
@@ -202,6 +225,17 @@ class TestValidators(unittesttools.ValidatorTestCase):
                     Foo.cls:1:8: error: SeeAllData used in @isTest
                      @isTest(SeeAllData=true, isParallel=true)
                              ^~~~~~~~~~~~~~~
+                    """,
+                ),
+            ),
+            # Whitespace
+            Case(
+                " @ isTest ( isParallel = true , SeeAllData = true )",
+                (
+                    """\
+                    Foo.cls:1:32: error: SeeAllData used in @isTest
+                      @ isTest ( isParallel = true , SeeAllData = true )
+                                                     ^~~~~~~~~~~~~~~~~
                     """,
                 ),
             ),

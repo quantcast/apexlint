@@ -46,7 +46,7 @@ class NoFutureInTest(base.Validator):
     invalid = retools.not_string(
         r"""
         (?P<cursor>
-            @future
+            @\s*future
         )
         """,
         flags=(re.IGNORECASE | re.VERBOSE),
@@ -63,7 +63,7 @@ class NoSeeAllData(base.Validator):
 
     invalid = retools.not_string(
         r"""
-        @isTest
+        @\s*isTest
         \s*\(
         [^)]*
         (?P<cursor>              # Capture SeeAllData=true
