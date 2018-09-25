@@ -53,6 +53,32 @@ class NoFutureInTest(base.Validator):
     )
 
 
+class NoSeeAllData(base.Validator):
+    """SeeAllData used in @isTest
+    The use of SeeAllData is forbidden because:
+      1. Row-locking conflicts can cause processes and deployments to fail.
+      2. It prevents concurrent test execution.
+      3. SeeAllData=false doesn't do anything in classes where SeeAllData=true.
+    """
+
+    invalid = retools.not_string(
+        r"""
+        @isTest
+        \s*\(
+        [^)]*
+        (?P<cursor>              # Capture SeeAllData=true
+            \b
+            SeeAllData
+            \s*=
+            .*?
+        )
+        \s*
+        [,)]
+        """,
+        flags=(re.IGNORECASE | re.VERBOSE),
+    )
+
+
 def library(
     *,
     select: AbstractSet[str] = frozenset(),

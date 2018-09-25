@@ -144,6 +144,75 @@ class TestValidators(unittesttools.ValidatorTestCase):
                     path=pathlib.Path(c.filename),
                 )
 
+    def test_NoSeeAllData(self):
+        class Case(NamedTuple):
+            contents: str
+            expected: Iterable[str]
+
+        for c in (
+            # No arguments
+            Case("@isTest", ()),
+            # SeeAllData argument
+            Case(
+                "@isTest(SeeAllData=true)",
+                (
+                    """\
+                    Foo.cls:1:8: error: SeeAllData used in @isTest
+                     @isTest(SeeAllData=true)
+                             ^~~~~~~~~~~~~~~
+                    """,
+                ),
+            ),
+            Case(
+                "@isTest(SeeAllData=false)",
+                (
+                    """\
+                    Foo.cls:1:8: error: SeeAllData used in @isTest
+                     @isTest(SeeAllData=false)
+                             ^~~~~~~~~~~~~~~~
+                    """,
+                ),
+            ),
+            Case(
+                "@istest(seealldata=true)",
+                (
+                    """\
+                    Foo.cls:1:8: error: SeeAllData used in @isTest
+                     @istest(seealldata=true)
+                             ^~~~~~~~~~~~~~~
+                    """,
+                ),
+            ),
+            # Other arguments
+            Case("@isTest(isParallel=true)", ()),
+            Case(
+                "@isTest(isParallel=true, SeeAllData=true)",
+                (
+                    """\
+                    Foo.cls:1:25: error: SeeAllData used in @isTest
+                     @isTest(isParallel=true, SeeAllData=true)
+                                              ^~~~~~~~~~~~~~~
+                    """,
+                ),
+            ),
+            Case(
+                "@isTest(SeeAllData=true, isParallel=true)",
+                (
+                    """\
+                    Foo.cls:1:8: error: SeeAllData used in @isTest
+                     @isTest(SeeAllData=true, isParallel=true)
+                             ^~~~~~~~~~~~~~~
+                    """,
+                ),
+            ),
+        ):
+            with self.subTest(c):
+                self.assertMatchLines(
+                    validator=validators.NoSeeAllData,
+                    contents=c.contents,
+                    expected=c.expected,
+                )
+
 
 # Other tests #################################################################
 
