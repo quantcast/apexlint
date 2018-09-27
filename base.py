@@ -19,7 +19,6 @@ from . import pathtools, terminfo
 class Error(NamedTuple):
     match: Match
     message: str
-    source: str
 
 
 class Location(NamedTuple):
@@ -139,12 +138,7 @@ class Validator(abc.ABC):
             return
 
         for m in cls.invalid.finditer(line):
-            source = line.rstrip("\n")
-            yield Error(
-                match=m,
-                message=cls.message(match=m, source=source),
-                source=source,
-            )
+            yield Error(match=m, message=cls.message(match=m, source=line))
 
     @classmethod
     def message(cls, *, match: Match, source: str) -> str:

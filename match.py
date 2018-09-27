@@ -55,6 +55,8 @@ def lines(
     if not enabled:
         return
 
+    lines = (l.rstrip("\n") for l in lines)
+
     for lineno, line in enumerate(lines, start=1):
         if suppress and NOQA.search(line):
             continue
@@ -66,7 +68,7 @@ def lines(
                         path=path, line=lineno, match=error.match
                     ),
                     message=error.message,
-                    source=error.source,
+                    source=line,
                 )
 
 
