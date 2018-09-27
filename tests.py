@@ -419,6 +419,7 @@ class TestMatchFiles(unittesttools.ValidatorTestCase):
             with self.subTest(c):
                 output_count = io.StringIO("\n")
                 __main__.lint(
+                    jobs=1,
                     output=None,
                     output_count=output_count if c.enabled else None,
                     paths=[pathtools.StdIn(io.StringIO(c.contents))],

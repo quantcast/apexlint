@@ -1,5 +1,8 @@
 import argparse
+import functools
+import itertools
 import logging
+import multiprocessing.pool
 import pathlib
 import sys
 from typing import IO, Iterable, Optional, Sequence, Tuple, Type
@@ -10,9 +13,28 @@ from . import PROGNAME, base, match, pathtools, terminfo
 log = logging.getLogger(__name__)
 
 
+def render_parallel(
+    paths: Iterable[pathlib.Path],
+    *,
+    pool: Optional[multiprocessing.pool.Pool],
+    **kwargs,
+):
+    if not pool:
+        return match.render(paths, **kwargs)
+
+    return itertools.chain.from_iterable(
+        pool.imap(functools.partial(render, **kwargs), ((p,) for p in paths))
+    )
+
+
+def render(*args, **kwargs):
+    return list(match.render(*args, **kwargs))
+
+
 def lint(
     paths: Iterable[pathlib.Path],
     *,
+    jobs: Optional[int] = None,
     output: Optional[IO] = sys.stdout,
     output_count: Optional[IO] = None,
     suppress: bool = True,
@@ -23,20 +45,22 @@ def lint(
     messages = []
     errors = []
 
-    for message in match.render(
-        paths,
-        suppress=suppress,
-        term=term,
-        validators=validators,
-        verbose=verbose,
-    ):
-        if isinstance(message, Exception):
-            errors.append(message)
-            continue
+    with multiprocessing.Pool(jobs) as pool:
+        for message in render_parallel(
+            paths,
+            pool=(pool if jobs != 1 else None),
+            suppress=suppress,
+            term=term,
+            validators=validators,
+            verbose=verbose,
+        ):
+            if isinstance(message, Exception):
+                errors.append(message)
+                continue
 
-        messages.append(message)
-        if output is not None:
-            print(message, file=output)
+            messages.append(message)
+            if output is not None:
+                print(message, file=output)
 
     if output_count is not None:
         print(len(messages), file=output_count)
@@ -52,6 +76,7 @@ def main(
 ):
     messages, errors = lint(
         pathtools.unique(pathtools.walk(pathtools.paths(config.files))),
+        jobs=config.jobs,
         output_count=sys.stderr if config.count else None,
         suppress=config.suppress,
         term=terminfo.TermInfo.get(color=config.color),
@@ -125,6 +150,16 @@ def parse_args(args: Sequence[str]) -> argparse.Namespace:
         metavar="VALIDATOR",
         help="list of errors to ignore (default: none)",
     )
+
+    parser.add_argument(
+        "-j",
+        "--jobs",
+        default=None,
+        metavar="N",
+        type=int,
+        help="number of parallel checks (default: number of CPUs)",
+    )
+
     parser.add_argument(
         "--no-suppress",
         action="store_false",
