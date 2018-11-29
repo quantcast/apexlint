@@ -17,7 +17,16 @@ class NoComplexMapKeys(base.Validator):
         (?!                  # Exclude these valid base types
             (
                 (System\.)?  # Base types are in System namespace
-                (Id|String|Integer|Long|Decimal|Date|DateTime|Type)
+                (
+                    Date
+                    | DateTime
+                    | Decimal
+                    | Id
+                    | Integer
+                    | Long
+                    | String
+                    | Type
+                )
             |
                 (Schema\.)?  # SObject schema namespace
                 (SObjectField|SObjectType)
