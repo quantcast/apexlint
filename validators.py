@@ -18,13 +18,17 @@ class NoComplexMapKeys(base.Validator):
             (
                 (System\.)?  # Base types are in System namespace
                 (
-                    Date
+                    Blob
+                    | Boolean
+                    | Date
                     | DateTime
                     | Decimal
+                    | Double
                     | Id
                     | Integer
                     | Long
                     | String
+                    | Time
                     | Type
                 )
             |

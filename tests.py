@@ -37,9 +37,12 @@ class TestValidators(unittesttools.ValidatorTestCase):
 
         for c in (
             # Base types are OK
+            Case("new Map<Blob, SObject>{}", ()),
+            Case("new Map<Boolean, SObject>{}", ()),
             Case("new Map<Date, SObject>{}", ()),
             Case("new Map<DateTime, SObject>{}", ()),
             Case("new Map<Decimal, SObject>{}", ()),
+            Case("new Map<Double, SObject>{}", ()),
             Case("new Map<Id, SObject>{}", ()),
             Case("new Map<Integer, SObject>{}", ()),
             Case("new Map<Long, SObject>{}", ()),
@@ -48,14 +51,19 @@ class TestValidators(unittesttools.ValidatorTestCase):
             Case("new Map<Schema.SObjectField, SObject>{}", ()),
             Case("new Map<Schema.SObjectType, SObject>{}", ()),
             Case("new Map<String, SObject>{}", ()),
+            Case("new Map<System.Blob, SObject>{}", ()),
+            Case("new Map<System.Boolean, SObject>{}", ()),
             Case("new Map<System.Date, SObject>{}", ()),
             Case("new Map<System.DateTime, SObject>{}", ()),
             Case("new Map<System.Decimal, SObject>{}", ()),
+            Case("new Map<System.Double, SObject>{}", ()),
             Case("new Map<System.Id, SObject>{}", ()),
             Case("new Map<System.Integer, SObject>{}", ()),
             Case("new Map<System.Long, SObject>{}", ()),
             Case("new Map<System.String, SObject>{}", ()),
+            Case("new Map<System.Time, SObject>{}", ()),
             Case("new Map<System.Type, SObject>{}", ()),
+            Case("new Map<Time, SObject>{}", ()),
             Case("new Map<Type, SObject>{}", ()),
             # Case should not matter
             Case("new map<id, sobject>{}", ()),
