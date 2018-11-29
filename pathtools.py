@@ -11,8 +11,10 @@ log = logging.getLogger(__name__)
 class StdIn(pathlib.Path):
     """Represent standard input as a pathlib.Path."""
 
+    STDIN_FILENO = sys.stdin.fileno()
     _flavour = None
     _cparts = ()
+    _parts = ()
 
     def __new__(cls, *args, **kwargs):
         # Suppress pathlib.Path.__new__()
@@ -33,6 +35,8 @@ class StdIn(pathlib.Path):
         return False
 
     def open(self, *args, **kwargs):
+        if self.stream.closed and self.stream.name == "<stdin>":
+            self.stream = os.fdopen(self.STDIN_FILENO)
         return self.stream
 
     def resolve(self, *args, **kwargs):
