@@ -1,3 +1,19 @@
+# Copyright 2018-19 Quantcast Corporation. All rights reserved.
+#
+# This file is part of Quantcast Apex Linter for Salesforce
+#
+# Licensed under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
+#
 import operator
 import re
 from typing import AbstractSet, Iterable, Type
@@ -5,37 +21,40 @@ from typing import AbstractSet, Iterable, Type
 from . import base, retools
 
 
-class NoComplexMapKeys(base.Validator):
-    """Map key is SObject or Object
-    See http://go.corp.qc/salesforce-maps
+BASE_TYPES = r"""
+           (
+               (System\.)?  # Base types are in System namespace
+               (
+                   Blob
+                   | Boolean
+                   | Date
+                   | DateTime
+                   | Decimal
+                   | Double
+                   | Id
+                   | Integer
+                   | Long
+                   | String
+                   | Time
+                   | Type
+               )
+           |
+               (Schema\.)?  # SObject schema namespace
+               (SObjectField|SObjectType)
+           )
+           """
+
+
+class NoObjectMapKeys(base.Validator):
+    """Map key might be mutable
+    See https://github.com/quantcast/apexlint/blob/master/MAPS-AND-SETS.md
     """
 
     invalid = retools.not_string(
-        r"""
+        fr"""
         \b
-        new\s+Map\s*<\s*     # "new Map<"
-        (?!                  # Exclude these valid base types
-            (
-                (System\.)?  # Base types are in System namespace
-                (
-                    Blob
-                    | Boolean
-                    | Date
-                    | DateTime
-                    | Decimal
-                    | Double
-                    | Id
-                    | Integer
-                    | Long
-                    | String
-                    | Time
-                    | Type
-                )
-            |
-                (Schema\.)?  # SObject schema namespace
-                (SObjectField|SObjectType)
-            )
-        )
+        new\s+ (?:Map)\s*<\s*     # "new Map<"
+        (?!{ BASE_TYPES })      # Exclude these valid base types
         (?P<cursor>          # Capture key name
             .+?
         )
@@ -43,7 +62,31 @@ class NoComplexMapKeys(base.Validator):
         """,
         flags=(re.IGNORECASE | re.VERBOSE),
     )
-    suppress = retools.comment("http://go.corp.qc/salesforce-maps")
+    suppress = retools.comment(
+        "https://github.com/quantcast/apexlint/blob/master/MAPS-AND-SETS.md"
+    )
+
+
+class NoObjectSetMembers(base.Validator):
+    """Set member might be mutable
+    See https://github.com/quantcast/apexlint/blob/master/MAPS-AND-SETS.md
+    """
+
+    invalid = retools.not_string(
+        fr"""
+        \b
+        new\s+ (?:Set)\s*<\s*     # "new Set<"
+        (?!{ BASE_TYPES })      # Exclude these valid base types
+        (?P<cursor>          # Capture member name
+            .+?
+        )
+        \s*>                 # Type ends with angle bracket
+        """,
+        flags=(re.IGNORECASE | re.VERBOSE),
+    )
+    suppress = retools.comment(
+        "https://github.com/quantcast/apexlint/blob/master/MAPS-AND-SETS.md"
+    )
 
 
 class NoFutureInTest(base.Validator):

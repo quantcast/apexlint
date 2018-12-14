@@ -1,3 +1,19 @@
+# Copyright 2018-19 Quantcast Corporation. All rights reserved.
+#
+# This file is part of Quantcast Apex Linter for Salesforce
+#
+# Licensed under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
+#
 #!/usr/bin/env python3
 import io
 import logging
@@ -30,7 +46,7 @@ from apexlint import (  # isort:skip
 class TestValidators(unittesttools.ValidatorTestCase):
     """`Validator` classes in `apexlint.validators`."""
 
-    def test_NoComplexMapKeys(self):
+    def test_NoObjectMapKeys(self):
         class Case(NamedTuple):
             contents: str
             expected: Iterable[str]
@@ -73,9 +89,19 @@ class TestValidators(unittesttools.ValidatorTestCase):
                 "new Map<SObject, SObject>{}",
                 (
                     """\
-                    Foo.cls:1:8: error: Map key is SObject or Object
+                    Foo.cls:1:8: error: Map key might be mutable
                      new Map<SObject, SObject>{}
                              ^~~~~~~
+                    """,
+                ),
+            ),
+            Case(
+                "new Map<Object, SObject>{}",
+                (
+                    """\
+                    Foo.cls:1:8: error: Map key might be mutable
+                     new Map<Object, SObject>{}
+                             ^~~~~~
                     """,
                 ),
             ),
@@ -84,18 +110,103 @@ class TestValidators(unittesttools.ValidatorTestCase):
                 " new Map < SObject , SObject > { }",
                 (
                     """\
-                    Foo.cls:1:11: error: Map key is SObject or Object
+                    Foo.cls:1:11: error: Map key might be mutable
                       new Map < SObject , SObject > { }
                                 ^~~~~~~
                     """,
                 ),
             ),
+            Case(
+                " new Map < Object , SObject > { }",
+                (
+                    """\
+                    Foo.cls:1:11: error: Map key might be mutable
+                      new Map < Object , SObject > { }
+                                ^~~~~~
+                    """,
+                ),
+            ),
             # Suppression
-            Case("new Map<A, B>{} // http://go.corp.qc/salesforce-maps", ()),
+            Case(
+                "new Map<A, B>{} // https://github.com/quantcast/apexlint/blob/master/MAPS-AND-SETS.md",
+                (),
+            ),
         ):
             with self.subTest(c):
                 self.assertMatchLines(
-                    validator=validators.NoComplexMapKeys,
+                    validator=validators.NoObjectMapKeys,
+                    contents=c.contents,
+                    expected=c.expected,
+                )
+
+    def test_NoObjectSetMembers(self):
+        class Case(NamedTuple):
+            contents: str
+            expected: Iterable[str]
+
+        for c in (
+            # Base types are OK
+            Case("new Set<Blob>{}", ()),
+            Case("new Set<Boolean>{}", ()),
+            Case("new Set<Date>{}", ()),
+            Case("new Set<DateTime>{}", ()),
+            Case("new Set<Decimal>{}", ()),
+            Case("new Set<Double>{}", ()),
+            Case("new Set<Id>{}", ()),
+            Case("new Set<Integer>{}", ()),
+            Case("new Set<Long>{}", ()),
+            Case("new Set<SObjectField>{}", ()),
+            Case("new Set<SObjectType>{}", ()),
+            Case("new Set<Schema.SObjectField>{}", ()),
+            Case("new Set<Schema.SObjectType>{}", ()),
+            Case("new Set<String>{}", ()),
+            Case("new Set<System.Blob>{}", ()),
+            Case("new Set<System.Boolean>{}", ()),
+            Case("new Set<System.Date>{}", ()),
+            Case("new Set<System.DateTime>{}", ()),
+            Case("new Set<System.Decimal>{}", ()),
+            Case("new Set<System.Double>{}", ()),
+            Case("new Set<System.Id>{}", ()),
+            Case("new Set<System.Integer>{}", ()),
+            Case("new Set<System.Long>{}", ()),
+            Case("new Set<System.String>{}", ()),
+            Case("new Set<System.Time>{}", ()),
+            Case("new Set<System.Type>{}", ()),
+            Case("new Set<Time>{}", ()),
+            Case("new Set<Type>{}", ()),
+            # Case should not matter
+            Case("new Set<id>{}", ()),
+            Case("new Set<ID>{}", ()),
+            # Whitespace
+            Case(
+                " new Set < SObject > { }",
+                (
+                    """\
+                    Foo.cls:1:11: error: Set member might be mutable
+                      new Set < SObject > { }
+                                ^~~~~~~
+                    """,
+                ),
+            ),
+            Case(
+                " new Set < Object > { }",
+                (
+                    """\
+                    Foo.cls:1:11: error: Set member might be mutable
+                      new Set < Object > { }
+                                ^~~~~~
+                    """,
+                ),
+            ),
+            # Suppression
+            Case(
+                "new Set<A>{} // https://github.com/quantcast/apexlint/blob/master/MAPS-AND-SETS.md",
+                (),
+            ),
+        ):
+            with self.subTest(c):
+                self.assertMatchLines(
+                    validator=validators.NoObjectSetMembers,
                     contents=c.contents,
                     expected=c.expected,
                 )
